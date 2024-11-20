@@ -1,0 +1,44 @@
+
+services:
+  reverse-proxy:
+    image: traefik
+    command: --api --docker.exposedbydefault=false
+    ports:
+      - 80:80
+      - 8080:8080
+    volumes:
+      - type: bind
+        source: /var/run/docker.sock
+        target: /var/run/docker.sock
+  db:
+    image: mysql:5
+    restart: always
+    environment:
+      - MYSQL_ROOT_PASSWORD
+      - MYSQL_DATABASE
+  redis:
+    image: redis:alpine
+    restart: always
+    volumes:
+      - type: bind
+        source: redis-data
+        target: /data
+  app:
+    build:
+      context: .
+    restart: always
+    environment:
+      DB_HOST: db
+      DB_NAME: ${MYSQL_DATABASE}
+      DB_USER: root
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      REDIS_HOST: redis
+    labels:
+      traefik.enable: "true"
+      traefik.frontend.rule: Host:${APP_HOST}
+    depends_on:
+      - db
+      - redis
+    volumes:
+      mysql-data: {}
+      redis-data: {}
